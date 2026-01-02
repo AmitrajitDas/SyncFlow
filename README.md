@@ -34,17 +34,20 @@ SyncFlow uses a microservices architecture with:
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
-   git clone <repo-url>
+   git clone [repo-url](https://github.com/AmitrajitDas/SyncFlow)
    cd SyncFlow
    ```
 
 2. **Initialize the environment**
+
    ```bash
    make init
    ```
 
    This will:
+
    - Create `.env` from `.env.example`
    - Start all infrastructure services
    - Initialize MongoDB replica set
@@ -119,18 +122,10 @@ SyncFlow/
 └── api-gateway/                    # API Gateway (Phase 5)
 ```
 
-## Development Phases
-
-- [x] **Phase 1**: Infrastructure Setup _(Current)_
-- [ ] **Phase 2**: Auth Service
-- [ ] **Phase 3**: Sync Engine Service
-- [ ] **Phase 4**: WebSocket Implementation
-- [ ] **Phase 5**: API Gateway
-- [ ] **Phase 6**: Testing, CI/CD, Documentation
-
 ## Technology Stack
 
 ### Infrastructure
+
 - **Orchestration**: Docker Compose
 - **Database**: MongoDB 7.0 (with replica set)
 - **Message Queue**: Apache Kafka 7.5
@@ -141,6 +136,7 @@ SyncFlow/
 - **Tracing**: Jaeger
 
 ### Services
+
 - **Auth Service**: Spring Boot 3.x, Spring Security, JWT
 - **Sync Engine**: Go 1.21+, Gorilla WebSocket
 - **API Gateway**: Spring Boot 3.x, Spring Web MVC
@@ -181,6 +177,7 @@ The following topics are auto-created:
 Access Grafana at http://localhost:3000 with credentials `admin/admin123`.
 
 Datasources are pre-configured for:
+
 - Prometheus (metrics)
 - Loki (logs)
 - Jaeger (traces)
