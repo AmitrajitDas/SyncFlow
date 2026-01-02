@@ -1,0 +1,72 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /api/auth
+
+spring:
+  application:
+    name: auth-service
+
+  # MongoDB Configuration
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_USER:admin}:${MONGODB_PASSWORD:admin123}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DATABASE:syncflow}?authSource=admin&replicaSet=rs0
+      database: ${MONGODB_DATABASE:syncflow}
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        linger.ms: 1
+        max.in.flight.requests.per.connection: 5
+    properties:
+      security.protocol: PLAINTEXT
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:SyncFlowSecretKeyForJWT2024ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
+
+# Kafka Topics
+kafka:
+  topics:
+    user-created: user.created
+    user-updated: user.updated
+    user-deleted: user.deleted
+
+# Bucket Configuration
+bucket:
+  assignment:
+    strategy: round-robin # Options: round-robin, random, hash-based
+    max-buckets: 1000
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.syncflow.auth: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.kafka: INFO
+    org.springframework.data.mongodb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
