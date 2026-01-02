@@ -1,0 +1,68 @@
+# Prometheus Configuration for SyncFlow
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'syncflow-local'
+    environment: 'development'
+
+# Alertmanager configuration (optional, can be added later)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # MongoDB Exporter (to be added later)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+  #       labels:
+  #         service: 'mongodb'
+
+  # Kafka Exporter (to be added later)
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka-exporter:9308']
+  #       labels:
+  #         service: 'kafka'
+
+  # Redis Exporter (to be added later)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         service: 'redis'
+
+  # Auth Service Metrics (to be added in Phase 2)
+  # - job_name: 'auth-service'
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['auth-service:8081']
+  #       labels:
+  #         service: 'auth-service'
+
+  # Sync Engine Metrics (to be added in Phase 3)
+  # - job_name: 'sync-engine'
+  #   metrics_path: '/metrics'
+  #   static_configs:
+  #     - targets: ['sync-engine:8082']
+  #       labels:
+  #         service: 'sync-engine'
+
+  # API Gateway Metrics (to be added in Phase 5)
+  # - job_name: 'api-gateway'
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['api-gateway:8080']
+  #       labels:
+  #         service: 'api-gateway'

@@ -1,0 +1,56 @@
+# Promtail Configuration for Docker Log Collection
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Docker container logs
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=syncflow"]
+
+    relabel_configs:
+      # Container name as label
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+
+      # Service name from compose
+      - source_labels: ['__meta_docker_compose_service']
+        target_label: 'service'
+
+      # Project name from compose
+      - source_labels: ['__meta_docker_compose_project']
+        target_label: 'project'
+
+    pipeline_stages:
+      # Parse JSON logs if present
+      - json:
+          expressions:
+            level: level
+            message: message
+            timestamp: timestamp
+
+      # Extract log level
+      - regex:
+          expression: '.*level=(?P<level>\w+).*'
+
+      # Set labels
+      - labels:
+          level:
+
+      # Timestamp parsing
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano

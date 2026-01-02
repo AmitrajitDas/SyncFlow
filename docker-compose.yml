@@ -1,0 +1,328 @@
+services:
+  # ============================================
+  # MongoDB - Database with Replica Set
+  # ============================================
+  mongodb:
+    image: mongo:7.0
+    container_name: syncflow-mongodb
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/data/keyfile/mongodb-keyfile"]
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-syncflow}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./infrastructure/mongodb/keyfile/mongodb-keyfile:/data/keyfile/mongodb-keyfile:ro
+      - ./infrastructure/mongodb/init-replica-set.sh:/docker-entrypoint-initdb.d/init-replica-set.sh:ro
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ============================================
+  # Zookeeper - Kafka Dependency
+  # ============================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: syncflow-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: echo stat | nc localhost 2181
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Kafka - Message Queue
+  # ============================================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: syncflow-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server localhost:9092
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================
+  # Kafka UI - Web Interface for Kafka
+  # ============================================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: syncflow-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "9090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: syncflow-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - syncflow-network
+
+  # ============================================
+  # Redis - Cache
+  # ============================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: syncflow-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Prometheus - Metrics Collection
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: syncflow-prometheus
+    ports:
+      - "9091:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Grafana - Visualization & Dashboards
+  # ============================================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: syncflow-grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Loki - Log Aggregation
+  # ============================================
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: syncflow-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./infrastructure/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Promtail - Log Shipper for Loki
+  # ============================================
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: syncflow-promtail
+    depends_on:
+      - loki
+    volumes:
+      - ./infrastructure/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - syncflow-network
+
+  # ============================================
+  # Jaeger - Distributed Tracing
+  # ============================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: syncflow-jaeger
+    ports:
+      - "5775:5775/udp"  # Zipkin compact
+      - "6831:6831/udp"  # Jaeger compact
+      - "6832:6832/udp"  # Jaeger binary
+      - "5778:5778"      # Config
+      - "16686:16686"    # UI
+      - "14268:14268"    # Jaeger collector
+      - "14250:14250"    # gRPC
+      - "9411:9411"      # Zipkin compatible
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Future Services (Uncomment when ready)
+  # ============================================
+
+  # auth-service:
+  #   build:
+  #     context: ./auth-service
+  #     dockerfile: Dockerfile
+  #   container_name: syncflow-auth-service
+  #   depends_on:
+  #     - mongodb
+  #     - kafka
+  #     - redis
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     MONGODB_URI: mongodb://admin:admin123@mongodb:27017/syncflow?authSource=admin
+  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  #     REDIS_HOST: redis
+  #     REDIS_PASSWORD: redis123
+  #   networks:
+  #     - syncflow-network
+
+  # sync-engine:
+  #   build:
+  #     context: ./sync-engine
+  #     dockerfile: Dockerfile
+  #   container_name: syncflow-sync-engine
+  #   depends_on:
+  #     - mongodb
+  #     - kafka
+  #     - redis
+  #   ports:
+  #     - "8082:8082"  # HTTP
+  #     - "8083:8083"  # WebSocket
+  #   environment:
+  #     MONGODB_URI: mongodb://admin:admin123@mongodb:27017/syncflow?authSource=admin
+  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  #     REDIS_HOST: redis:6379
+  #     REDIS_PASSWORD: redis123
+  #   networks:
+  #     - syncflow-network
+
+  # api-gateway:
+  #   build:
+  #     context: ./api-gateway
+  #     dockerfile: Dockerfile
+  #   container_name: syncflow-api-gateway
+  #   depends_on:
+  #     - auth-service
+  #     - sync-engine
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     AUTH_SERVICE_URL: http://auth-service:8081
+  #     SYNC_ENGINE_URL: http://sync-engine:8082
+  #   networks:
+  #     - syncflow-network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  syncflow-network:
+    driver: bridge
+    name: syncflow-network
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  mongodb_data:
+    name: syncflow-mongodb-data
+  mongodb_config:
+    name: syncflow-mongodb-config
+  zookeeper_data:
+    name: syncflow-zookeeper-data
+  zookeeper_logs:
+    name: syncflow-zookeeper-logs
+  kafka_data:
+    name: syncflow-kafka-data
+  redis_data:
+    name: syncflow-redis-data
+  prometheus_data:
+    name: syncflow-prometheus-data
+  grafana_data:
+    name: syncflow-grafana-data
+  loki_data:
+    name: syncflow-loki-data
