@@ -53,7 +53,7 @@ public class BucketAssignmentService {
      */
     private String assignRoundRobin() {
         long count = counter.getAndIncrement();
-        long bucketNumber = count % maxBuckets;
+        long bucketNumber = Math.abs(count % maxBuckets);
         return String.format("bucket-%04d", bucketNumber);
     }
 
