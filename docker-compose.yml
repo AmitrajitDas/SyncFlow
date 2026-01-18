@@ -236,28 +236,48 @@ services:
       retries: 5
 
   # ============================================
+  # Auth Service - JWT Authentication
+  # ============================================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: syncflow-auth-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      # MongoDB Configuration
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USER: ${MONGO_ROOT_USERNAME:-admin}
+      MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+      MONGODB_DATABASE: ${MONGO_DATABASE:-syncflow}
+      # Kafka Configuration
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET:-SyncFlowSecretKeyForJWT2024ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+    networks:
+      - syncflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/api/auth/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # ============================================
   # Future Services (Uncomment when ready)
   # ============================================
-
-  # auth-service:
-  #   build:
-  #     context: ./auth-service
-  #     dockerfile: Dockerfile
-  #   container_name: syncflow-auth-service
-  #   depends_on:
-  #     - mongodb
-  #     - kafka
-  #     - redis
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     SPRING_PROFILES_ACTIVE: docker
-  #     MONGODB_URI: mongodb://admin:admin123@mongodb:27017/syncflow?authSource=admin
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  #     REDIS_HOST: redis
-  #     REDIS_PASSWORD: redis123
-  #   networks:
-  #     - syncflow-network
 
   # sync-engine:
   #   build:
