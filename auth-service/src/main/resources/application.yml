@@ -29,7 +29,7 @@ spring:
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:SyncFlowSecretKeyForJWT2024ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
+  secret: ${JWT_SECRET:SyncFlowSecretKeyForJWT2026ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
 

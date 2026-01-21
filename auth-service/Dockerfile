@@ -1,4 +1,4 @@
-# Stage 1: Build
+ # Stage 1: Build
 FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /app
@@ -16,7 +16,7 @@ COPY src ./src
 RUN mvn package -DskipTests -B
 
 # Stage 2: Runtime
-FROM eclipse-temurin:17-jre-alpine
+FROM amazoncorretto:17-alpine
 
 WORKDIR /app
 

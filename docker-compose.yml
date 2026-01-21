@@ -5,7 +5,16 @@ services:
   mongodb:
     image: mongo:7.0
     container_name: syncflow-mongodb
-    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/data/keyfile/mongodb-keyfile"]
+    command:
+      [
+        "--replSet",
+        "rs0",
+        "--bind_ip_all",
+        "--port",
+        "27017",
+        "--keyFile",
+        "/data/keyfile/mongodb-keyfile",
+      ]
     ports:
       - "27017:27017"
     environment:
@@ -129,18 +138,26 @@ services:
     ports:
       - "9091:9090"
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=30d'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=30d"
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     networks:
       - syncflow-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9090/-/healthy",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -168,7 +185,15 @@ services:
     networks:
       - syncflow-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/api/health",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -188,7 +213,15 @@ services:
     networks:
       - syncflow-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3100/ready",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -216,21 +249,29 @@ services:
     image: jaegertracing/all-in-one:1.51
     container_name: syncflow-jaeger
     ports:
-      - "5775:5775/udp"  # Zipkin compact
-      - "6831:6831/udp"  # Jaeger compact
-      - "6832:6832/udp"  # Jaeger binary
-      - "5778:5778"      # Config
-      - "16686:16686"    # UI
-      - "14268:14268"    # Jaeger collector
-      - "14250:14250"    # gRPC
-      - "9411:9411"      # Zipkin compatible
+      - "5775:5775/udp" # Zipkin compact
+      - "6831:6831/udp" # Jaeger compact
+      - "6832:6832/udp" # Jaeger binary
+      - "5778:5778" # Config
+      - "16686:16686" # UI
+      - "14268:14268" # Jaeger collector
+      - "14250:14250" # gRPC
+      - "9411:9411" # Zipkin compatible
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
       COLLECTOR_OTLP_ENABLED: "true"
     networks:
       - syncflow-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:14269/"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:14269/",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -262,13 +303,21 @@ services:
       # Kafka Configuration
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       # JWT Configuration
-      JWT_SECRET: ${JWT_SECRET:-SyncFlowSecretKeyForJWT2024ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
+      JWT_SECRET: ${JWT_SECRET:-SyncFlowSecretKeyForJWT2026ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
     networks:
       - syncflow-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/api/auth/actuator/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8081/api/auth/actuator/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
