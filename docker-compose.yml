@@ -306,6 +306,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-SyncFlowSecretKeyForJWT2026ThisIsAVeryLongSecretKeyThatShouldBeStoredSecurely}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      # Spring Boot Configuration
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SERVER_PORT: "8081"
+      # Logging Configuration
+      LOGGING_LEVEL_ROOT: ${LOG_LEVEL:-INFO}
+      LOGGING_LEVEL_COM_SYNCFLOW_AUTH: DEBUG
     networks:
       - syncflow-network
     healthcheck:
@@ -342,9 +348,18 @@ services:
   #     - "8083:8083"  # WebSocket
   #   environment:
   #     MONGODB_URI: mongodb://admin:admin123@mongodb:27017/syncflow?authSource=admin
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  #     REDIS_HOST: redis:6379
+  #     KAFKA_BOOTSTRAP_SERVERS: '["kafka:29092"]'
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: "6379"
   #     REDIS_PASSWORD: redis123
+  #     REDIS_DB: "0"
+  #     HTTP_PORT: "8082"
+  #     WS_PORT: "8083"
+  #     MONGODB_DATABASE: syncflow
+  #     KAFKA_CONSUMER_GROUP: sync-engine-group
+  #     CHECKPOINT_DIR: /tmp/syncflow/checkpoints
+  #     CHECKPOINT_INTERVAL: 5m
+  #     LOG_LEVEL: INFO
   #   networks:
   #     - syncflow-network
 
