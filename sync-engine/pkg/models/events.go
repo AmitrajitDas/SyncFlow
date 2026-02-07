@@ -71,13 +71,25 @@ type ConflictDetectedEvent struct {
 
 // CheckpointCreatedEvent represents a checkpoint creation event
 type CheckpointCreatedEvent struct {
-	CheckpointID string    `json:"checkpointId"`
-	BucketID     string    `json:"bucketId"`
-	Collection   string    `json:"collection,omitempty"`
-	FilePath     string    `json:"filePath"`
-	FileSize     int64     `json:"fileSize"`
-	DocumentCount int64    `json:"documentCount"`
-	CreatedAt    time.Time `json:"createdAt"`
+	EventID       string    `json:"eventId"`
+	CheckpointID  string    `json:"checkpointId"`
+	BucketID      string    `json:"bucketId"`
+	DocumentCount int       `json:"documentCount"`
+	SizeBytes     int64     `json:"sizeBytes"`
+	CreatedAt     time.Time `json:"createdAt"`
+	StorageURL    string    `json:"storageUrl"`
+}
+
+// CheckpointMetadata represents metadata for a checkpoint snapshot
+type CheckpointMetadata struct {
+	CheckpointID  string    `json:"checkpointId" bson:"checkpointId"`
+	BucketID      string    `json:"bucketId" bson:"bucketId"`
+	CreatedAt     time.Time `json:"createdAt" bson:"createdAt"`
+	DocumentCount int       `json:"documentCount" bson:"documentCount"`
+	SizeBytes     int64     `json:"sizeBytes" bson:"sizeBytes"`
+	FilePath      string    `json:"filePath" bson:"filePath"`
+	Format        string    `json:"format" bson:"format"` // "tar.gz"
+	Version       string    `json:"version" bson:"version"` // "1.0"
 }
 
 // ChangeStreamEvent represents a MongoDB change stream event

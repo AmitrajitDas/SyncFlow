@@ -10,13 +10,15 @@ import (
 
 // Config holds all configuration for the sync engine
 type Config struct {
-	Server     ServerConfig     `mapstructure:"server"`
-	MongoDB    MongoDBConfig    `mapstructure:"mongodb"`
-	Kafka      KafkaConfig      `mapstructure:"kafka"`
-	Redis      RedisConfig      `mapstructure:"redis"`
-	Checkpoint CheckpointConfig `mapstructure:"checkpoint"`
-	WebSocket  WebSocketConfig  `mapstructure:"websocket"`
-	Log        LogConfig        `mapstructure:"log"`
+	Environment string           `mapstructure:"environment"`
+	Server      ServerConfig     `mapstructure:"server"`
+	MongoDB     MongoDBConfig    `mapstructure:"mongodb"`
+	Kafka       KafkaConfig      `mapstructure:"kafka"`
+	Redis       RedisConfig      `mapstructure:"redis"`
+	Checkpoint  CheckpointConfig `mapstructure:"checkpoint"`
+	WebSocket   WebSocketConfig  `mapstructure:"websocket"`
+	Log         LogConfig        `mapstructure:"log"`
+	viper       *viper.Viper
 }
 
 // ServerConfig holds server configuration
@@ -84,14 +86,32 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	cfg.viper = v
 	return &cfg, nil
+}
+
+// LoadConfig is an alias for Load for backwards compatibility
+func LoadConfig() (*Config, error) {
+	return Load()
+}
+
+// GetString returns a config value as string (for dynamic lookups)
+func (c *Config) GetString(key string) string {
+	if c.viper == nil {
+		return ""
+	}
+	return c.viper.GetString(key)
 }
 
 // setDefaults sets default configuration values
 func setDefaults(v *viper.Viper) {
+	// Environment
+	v.SetDefault("environment", "development")
+
 	// Server defaults
 	v.SetDefault("server.http_port", "8082")
 	v.SetDefault("server.ws_port", "8083")
+	v.SetDefault("server.http_addr", ":8082")
 
 	// MongoDB defaults
 	v.SetDefault("mongodb.uri", "mongodb://admin:admin123@localhost:27017/syncflow?authSource=admin&replicaSet=rs0")
@@ -125,8 +145,10 @@ func setDefaults(v *viper.Viper) {
 // bindEnvVars binds environment variables for docker-compose compatibility
 func bindEnvVars(v *viper.Viper) {
 	// Direct env var mappings (without SYNC_ prefix)
+	v.BindEnv("environment", "ENVIRONMENT")
 	v.BindEnv("server.http_port", "HTTP_PORT")
 	v.BindEnv("server.ws_port", "WS_PORT")
+	v.BindEnv("server.http_addr", "HTTP_ADDR")
 	v.BindEnv("mongodb.uri", "MONGODB_URI")
 	v.BindEnv("mongodb.database", "MONGODB_DATABASE")
 	v.BindEnv("kafka.bootstrap_servers", "KAFKA_BOOTSTRAP_SERVERS")
